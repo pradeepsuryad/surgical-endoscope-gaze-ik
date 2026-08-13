@@ -1,0 +1,55 @@
+name: ci
+
+# This repo has no unit tests, so this is a smoke test rather than a test
+# suite, and it is labelled that way on purpose. It proves the thing most
+# likely to rot in a portfolio repo: that a fresh clone still installs and
+# still runs end to end. It does not verify the IK results are correct.
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run the solver headless
+        # --no-render is the documented headless path. MPLBACKEND=Agg because
+        # the visualiser writes plots and the runner has no display.
+        #
+        # Coarse on purpose: --step-mm 10 gives ~95 waypoints instead of the
+        # ~940 the 1 mm default produces, which is enough to exercise the whole
+        # pipeline (DH forward kinematics, damped least-squares IK, the
+        # null-space projector, the plotting) in a fraction of the time.
+        env:
+          MPLBACKEND: Agg
+        run: python main.py --no-render --laps 1 --max-iter 3 --step-mm 10
+
+      - name: Check the run produced its plots
+        run: |
+          ls -la results/
+          test -f results/00_summary_dashboard.png
+          test -f results/05_ik_convergence.png
+
+# Careful running this command locally: main.py always writes to results/,
+# which is tracked, and the coarse settings above produce visibly worse
+# figures than the ~940-waypoint run the committed ones came from. On a
+# runner that does not matter -- the checkout is thrown away and nothing is
+# committed -- but locally it silently overwrites the figures the README
+# annotates, including the joint-limit spike in 02_error_over_time.png.
+# Use `git checkout -- results/` afterwards.

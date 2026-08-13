@@ -1,6 +1,8 @@
 # Surgical Endoscope Tracking via SE(3) Newton-Raphson IK
 ### 7-DOF Franka Emika Panda | MuJoCo Physics | Graduate Robotics Portfolio
 
+[![ci](https://github.com/pradeepsuryad/surgical-endoscope-RMC-IK/actions/workflows/ci.yml/badge.svg)](https://github.com/pradeepsuryad/surgical-endoscope-RMC-IK/actions/workflows/ci.yml)
+
 > **Summary:** A custom SE(3) Inverse Kinematics solver drives a simulated
 > 7-DOF manipulator along a millimetre-precision circular trajectory while
 > continuously re-orienting the tool's camera axis toward a fixed surgical
@@ -279,7 +281,7 @@ All plots are saved to `results/`:
 
 ## Author
 
-**Dadi Pradyumna Reddy** — Graduate Robotics Student, Northeastern University  
+**Pradeep Surya Dadi** — Graduate Robotics Student, Northeastern University  
 `dadi.pr@northeastern.edu`
 
 ---

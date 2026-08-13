@@ -1,6 +1,7 @@
-# project2_pradeep_dadi.py
-# ME5250 Project 2 — 7-DOF Panda SE(3) NR-IK, Circular Trajectory
-# Dadi Pradeep Surya 
+# me5250_project2.py
+# ME5250 Project 2 (original course submission) - 7-DOF Panda SE(3) NR-IK,
+# circular trajectory. Superseded by main.py and src/; kept for provenance.
+# Pradeep Surya Dadi
 
 from __future__ import annotations
 import argparse, time
