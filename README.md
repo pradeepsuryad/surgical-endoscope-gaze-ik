@@ -1,12 +1,14 @@
 # Surgical Endoscope Tracking via SE(3) Newton-Raphson IK
-### 7-DOF Franka Emika Panda | MuJoCo Physics | Graduate Robotics Portfolio
+### 7-DOF Franka Emika Panda | MuJoCo | Graduate Robotics Portfolio
 
-[![ci](https://github.com/pradeepsuryad/surgical-endoscope-RMC-IK/actions/workflows/ci.yml/badge.svg)](https://github.com/pradeepsuryad/surgical-endoscope-RMC-IK/actions/workflows/ci.yml)
+[![ci](https://github.com/pradeepsuryad/surgical-endoscope-gaze-ik/actions/workflows/ci.yml/badge.svg)](https://github.com/pradeepsuryad/surgical-endoscope-gaze-ik/actions/workflows/ci.yml)
 
 > **Summary:** A custom SE(3) Inverse Kinematics solver drives a simulated
-> 7-DOF manipulator along a millimetre-precision circular trajectory while
-> continuously re-orienting the tool's camera axis toward a fixed surgical
-> target — all without using any built-in IK solver.
+> 7-DOF manipulator along a circular trajectory while re-orienting the
+> tool's camera axis toward a fixed surgical target — all without using any
+> built-in IK solver. In the committed run, tracking is sub-millimetre for
+> roughly the first 80% of the lap (after a brief start-up transient), then
+> diverges — see the tracking-error plot below.
 
 ---
 
@@ -29,18 +31,20 @@
 ### SE(3) Tracking Error over Time
 ![Tracking Error](results/02_error_over_time.png)
 
-> The annotated spike marks where **q4 reaches its joint limit** (~t = 1.5 s).
-> The null-space projector `N = I − J⁺J` loses one redundant DOF, the arm
-> effectively becomes 6-DOF, and the DLS damping (λ_max = 0.05) activates
-> near the resulting kinematic singularity — causing the transient error rise.
-> Performance recovers once the arm moves away from that configuration.
+> Apart from the start-up transient, position and orientation error stay near
+> zero until t ≈ 1.5 s, then grow to ≈ 107 mm and ≈ 1 rad by the end of the
+> lap without recovering. The rise coincides with q1 flattening at ≈ 166° in
+> the joint-angle plot below — its +2.8973 rad limit in `src/ik_solver.py`.
+> The boxed annotation is fixed text placed at the peak (`src/visualizer.py`),
+> not derived from the log: the joint at its limit is q1, not q4, and neither
+> λ nor σ_min(J) is logged.
 
 ### Analytical FK vs MuJoCo FK Verification
 ![FK Comparison](results/03_fk_comparison.png)
 
 > Analytical DH FK includes the 103.4 mm flange → `attachment_site` offset (`_T_FLANGE_EE`), bringing discrepancy to **< 10⁻¹² mm** (floating-point noise only).
 
-### Joint Angles — Smooth Motion Verification
+### Joint Angles
 ![Joint Angles](results/04_joint_angles.png)
 
 ### Newton-Raphson IK Convergence per Iteration
@@ -48,8 +52,10 @@
 
 > **Top panel:** mean ± σ residual ‖e_k‖ across all converged steps, with
 > individual step traces shown behind (thin lines).
-> **Bottom panel:** per-iteration reduction ratio e_k / e_{k-1} — values < 1
-> confirm monotonic NR decay within the 5-iteration budget.
+> **Bottom panel:** per-iteration reduction ratio e_k / e_{k-1}. Converged
+> steps stop as soon as ‖e‖ < tol and are padded with their last residual
+> (`src/visualizer.py`), so the bars at k = 2–5 are exactly 1 by construction;
+> all of the decay shown happens in the first iteration.
 > Null-space joint-limit avoidance (`N = I − J⁺J`, gain = 0.5) is applied
 > at every iteration as a secondary task on the 1-DOF redundancy.
 
@@ -66,7 +72,7 @@ surgical_endoscope_tracking/
 ├── src/
 │   ├── kinematics.py    — DH-based analytical FK + SE(3) spatial-error math
 │   ├── ik_solver.py     — Newton-Raphson loop + damped-least-squares (DLS/LM)
-│   ├── trajectory.py    — Circular trajectory + gaze-aligned orientation (RCM)
+│   ├── trajectory.py    — Circular trajectory + gaze-aligned (look-at) orientation
 │   ├── simulation.py    — MuJoCo environment, step loop, data logging
 │   └── visualizer.py    — 7 Matplotlib/Seaborn analysis plots
 │
@@ -88,6 +94,7 @@ NewtonRaphsonIK ←── J(q) from mj_jacSite  ─── MuJoCo Model
        │  q*               ←── T_cur from mj_kinematics
        ▼
 EndoscopeSimulation
+  data.qpos[:7] = q*     (set directly: the arm is teleported to q* each step)
   data.ctrl[:7] = q*  →  mj_step()
        │
        ├── log: MuJoCo FK pose
@@ -168,7 +175,7 @@ J⁺ = Jᵀ(JJᵀ + λ²I)⁻¹
 | `σ_thresh` | 0.05 | Min singular value threshold for DLS activation |
 | `tol` | 1 × 10⁻⁴ | Early-stop threshold on ‖e‖ |
 
-### 4. Remote Centre of Motion (RCM) / Endoscope Active Vision
+### 4. Gaze (Look-At) Constraint / Endoscope Active Vision
 
 At each waypoint `p(θ) = [R·cos θ, R·sin θ, z_height]` on the circle,
 the desired rotation matrix is constructed so that the **local X-axis acts
@@ -183,8 +190,9 @@ x̂_d = (p_target − p(θ)) / ‖p_target − p(θ)‖
 R_d(θ) = [x̂_d | ŷ_d | ẑ_d]   ∈ SO(3)
 ```
 
-This ensures the endoscope camera continuously tracks the tissue target as
-the end-effector orbits — the core RCM active-vision constraint.
+This points the desired camera axis at the tissue target at every waypoint
+as the end-effector orbits — a gaze (look-at) constraint. There is no remote
+centre of motion: no fulcrum point is constrained or measured.
 
 ---
 
@@ -246,9 +254,9 @@ All plots are saved to `results/`:
 | `simulation.mp4` | Full MuJoCo simulation video (offscreen render) |
 | `00_summary_dashboard.png` | One-page summary for quick inspection |
 | `01_3d_trajectory.png` | Desired vs actual 3D path |
-| `02_error_over_time.png` | Position (mm) & orientation (rad) error; joint-limit event annotated |
+| `02_error_over_time.png` | Position (mm) & orientation (rad) error; peak error marked |
 | `03_fk_comparison.png` | Analytical FK vs MuJoCo FK verification |
-| `04_joint_angles.png` | All 7 joint angles (smooth motion proof) |
+| `04_joint_angles.png` | All 7 joint angles over the run |
 | `05_ik_convergence.png` | NR residual decay + per-iteration reduction ratio (two-panel) |
 | `06_computation_time.png` | Per-step IK solve time |
 
@@ -268,10 +276,6 @@ All plots are saved to `results/`:
 - **Fixed-iteration budget (N = 5).** Real surgical robots operate under
   hard real-time constraints.  Locking `max_iter = 5` deliberately models
   this; the residual plots quantify accuracy within that budget.
-
-- **Damped Least Squares fallback.** The LM regularisation prevents
-  joint-velocity blow-up near kinematic singularities — essential for a
-  redundant 7-DOF arm traversing a full circle.
 
 - **1 mm waypoint spacing.** `CircularTrajectory` computes
   `n = ceil(2πR / 0.001)` waypoints, guaranteeing sub-millimetre arc
