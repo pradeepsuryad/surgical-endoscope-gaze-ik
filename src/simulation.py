@@ -9,7 +9,7 @@ Simulation loop (per timestep)
 2. Obtain the geometric Jacobian via MuJoCo's mj_jacSite.
 3. Obtain the current EE pose via MuJoCo site kinematics.
 4. Run the Newton-Raphson IK solver (N fixed iterations).
-5. Apply updated joint angles via position control (data.ctrl).
+5. Set the joint angles directly (data.qpos, mirrored to data.ctrl) and run mj_forward (kinematics only).
 6. Step the physics engine (mj_step).
 7. Log: joint angles, MuJoCo EE pose, analytical EE pose, errors, timings.
 

@@ -5,8 +5,8 @@ Circular trajectory generation for the surgical endoscope tracking task.
 
 The end-effector traces a 3D circle of radius R at height Z_c (base frame).
 At each waypoint the desired orientation R_d ∈ SO(3) is constructed so that
-the tool's local X-axis points toward a fixed Remote-Centre-of-Motion (RCM)
-target — here the world origin (0, 0, 0).
+the tool's local X-axis points toward a fixed look-at target — here the world
+origin (0, 0, 0). This is a gaze constraint; no remote centre of motion is enforced.
 
 Waypoints are spaced approximately *step_mm* millimetres apart along the arc,
 satisfying the 1 mm assignment requirement.
@@ -49,7 +49,7 @@ def _look_at_rotation(
     Parameters
     ----------
     position : (3,) EE position [m].
-    target   : (3,) RCM / tissue target [m].
+    target   : (3,) tissue target the camera looks at [m].
     up_hint  : (3,) preferred "up" direction; defaults to world +Z.
 
     Returns
@@ -85,7 +85,7 @@ class CircularTrajectory:
     """Discretised circular trajectory with gaze-aligned orientations.
 
     The circle lies in a horizontal plane at height *z_height*, centred at
-    (*cx*, *cy*, *z_height*).  The RCM / endoscope target is fixed at
+    (*cx*, *cy*, *z_height*).  The endoscope's look-at target is fixed at
     *target_point* (default: origin).
 
     Consecutive waypoints are ≈ *step_mm* mm apart along the arc.
@@ -96,7 +96,7 @@ class CircularTrajectory:
     z_height     : float   Height of the circle plane [m].
     cx, cy       : float   Circle centre (x, y) [m].
     step_mm      : float   Arc-length spacing between waypoints [mm].
-    target_point : (3,)    Fixed RCM / tissue-target [m]; default = origin.
+    target_point : (3,)    Fixed look-at (tissue) target [m]; default = origin.
     """
 
     def __init__(
